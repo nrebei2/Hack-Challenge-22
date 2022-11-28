@@ -1,0 +1,6 @@
+version: "3"
+services:    
+    demo:        
+        image: nrebei/Hack-Challenge-22            
+        ports:                
+            - "8000:8000"        
