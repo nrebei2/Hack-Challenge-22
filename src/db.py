@@ -15,12 +15,12 @@ association_table_journals_tags = db.Table("association_s", db.Model.metadata,
                                                      db.ForeignKey("tag.id"))
                                            )
 
-association_table_journals_emotions = db.Table("association_e", db.Model.metadata,
-                                           db.Column("entry_id", db.Integer,
-                                                     db.ForeignKey("entry.id")),
-                                           db.Column("emotion_id", db.Integer,
-                                                     db.ForeignKey("emotion.id"))
-                                           )
+# association_table_journals_emotions = db.Table("association_e", db.Model.metadata,
+#                                            db.Column("entry_id", db.Integer,
+#                                                      db.ForeignKey("entry.id")),
+#                                            db.Column("emotion_id", db.Integer,
+#                                                      db.ForeignKey("emotion.id"))
+#                                            )
 
 class User(db.Model):
     """
@@ -100,27 +100,32 @@ class Entry(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String, nullable=False)
-    content = db.Column(db.String, nullable=True)
+    # Should be "" when empty
+    content = db.Column(db.String, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    emotion = db.Column(db.String, nullable=False)
     
     date = db.Column(db.String, nullable=True)
 
-    entry_emotions = db.relationship(
-        "Emotion", secondary=association_table_journals_emotions, back_populates='emotion_entries'
-    )
+    # entry_emotions = db.relationship(
+    #     "Emotion", secondary=association_table_journals_emotions, back_populates='emotion_entries'
+    # )
+
     entry_tags = db.relationship(
         "Tag", secondary=association_table_journals_tags, back_populates='tag_entries')
 
     def __init__(self, **kwargs) -> None:
         self.title = kwargs["title"]
         self.content = kwargs["content"]
+        self.user_id = kwargs["user"]
+        self.user_id = kwargs["user"]
         self.date = datetime.datetime.now()
 
     def info(self):
         return {
             "title": self.title,
             "content": self.content,
-            "emotion": self.entry_emotions,
+            "emotion": self.emotion,
             "date": self.date
         }
 
@@ -160,31 +165,31 @@ class Tag(db.Model):
         return i
 
 
-class Emotion(db.Model):
-    '''
-    Database representing a Emotion
-    Contains a name, color, and a link to the association table of entries to emotions
-    '''
-    __tablename__ = "emotion"
+# class Emotion(db.Model):
+#     '''
+#     Database representing a Emotion
+#     Contains a name, color, and a link to the association table of entries to emotions
+#     '''
+#     __tablename__ = "emotion"
 
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String, nullable=False)
-    color = db.Column(db.String, nullable=False)
+#     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+#     name = db.Column(db.String, nullable=False)
+#     color = db.Column(db.String, nullable=False)
 
-    emotion_entries = db.relationship(
-        "Entry", secondary=association_table_journals_emotions, back_populates='entry_emotions')
+#     emotion_entries = db.relationship(
+#         "Entry", secondary=association_table_journals_emotions, back_populates='entry_emotions')
 
-    def __init__(self, **kwargs) -> None:
-        self.name = kwargs["name"]
-        self.color = kwargs["color"]
+#     def __init__(self, **kwargs) -> None:
+#         self.name = kwargs["name"]
+#         self.color = kwargs["color"]
 
-    def info(self):
-        return {
-            "name": self.name,
-            "color": self.color
-        }
+#     def info(self):
+#         return {
+#             "name": self.name,
+#             "color": self.color
+#         }
 
-    def serialize(self):
-        i = self.info()
-        i.update({"entries": [c.info() for c in self.emotion_entries]})
-        return i
+#     def serialize(self):
+#         i = self.info()
+#         i.update({"entries": [c.info() for c in self.emotion_entries]})
+#         return i

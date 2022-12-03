@@ -164,6 +164,78 @@ def logout():
 
     return success_response({"message": "You have successfully logged out"})
 
+# --------------------------------------------
+#  Entry routes
+# --------------------------------------------
+
+@app.route("/api/entries/")
+def get_entry():
+    entries = [entry.serialize() for entry in Entry.query.all()]
+    return success_response({"entries": entries})
+
+@app.route("/api/entries/", methods=["POST"])
+def create_entry():
+    '''
+    Creates a new entry given a title, content, and emotion
+    '''
+    body = json.loads(request.data)
+
+    title = body.get("title", None)
+    content = body.get("content", None)
+    emotion = body.get("emotion", None)
+
+    success, session_token = extract_token(request)
+
+    if not success:
+        return failure_response("Could not extract session token", 400)
+
+    user = users_dao.get_user_by_session_token(session_token)
+    if user is None or not user.verify_session_token(session_token):
+        return failure_response("Invalid session token", 400)
+
+    if None in [title, content]:
+        return failure_response("You either forgot to supply a title or content!", 400)
+    
+    if not emotion:
+        return failure_response("You forgot to supply an emotion!", 400)
+
+    new_entry = Entry(
+        title=title,
+        content=content,
+        user=user.id,
+        emotion=emotion
+    )
+
+    db.session.add(new_entry)
+    db.session.commit()
+
+    return success_response(new_entry.serialize(), 201)
+
+
+@app.route("/api/entries/<int:id>/")
+def get_entry(id):
+    '''
+    Retrieves entry given id
+    '''
+    entry = Entry.query.filter_by(id=id).first()
+    if entry is None:
+        return failure_response("entry not found!")
+    return success_response(entry.serialize())
+
+
+@app.route("/api/entries/<int:id>/", methods=["DELETE"])
+def delete_entry(id):
+    '''
+    Delete entry given id
+    '''
+    entry = Entry.query.filter_by(id=id).first()
+    if entry is None:
+        return failure_response("entry not found!")
+    db.session.delete(entry)
+    db.session.commit()
+    return success_response(entry.serialize())
+
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
