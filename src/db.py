@@ -69,7 +69,7 @@ class User(db.Model):
         """
         self.session_token = self._urlsafe_base_64()
         # Change expiration time accordingly
-        self.session_expiration = datetime.datetime.now() + datetime.timedelta(minutes=1)
+        self.session_expiration = datetime.datetime.now() + datetime.timedelta(days=30)
         self.update_token = self._urlsafe_base_64()
 
     def verify_password(self, password):
@@ -118,11 +118,12 @@ class Entry(db.Model):
         self.title = kwargs["title"]
         self.content = kwargs["content"]
         self.user_id = kwargs["user"]
-        self.user_id = kwargs["user"]
+        self.emotion = kwargs["emotion"]
         self.date = datetime.datetime.now()
 
     def info(self):
         return {
+            "id": self.issue,
             "title": self.title,
             "content": self.content,
             "emotion": self.emotion,

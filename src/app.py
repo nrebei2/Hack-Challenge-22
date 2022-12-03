@@ -1,4 +1,4 @@
-from db import db
+from db import *
 from flask import Flask, request
 import users_dao
 import datetime
@@ -43,7 +43,7 @@ def extract_token(request):
 
 @app.route("/")
 def base_endpoint():
-    return os.environ.get("NETID") + " was here!"
+    return "Hello world!"
 
 
 @app.route("/register/", methods=["POST"])
@@ -120,27 +120,27 @@ def update_session():
     })
 
 
-@app.route("/secret/", methods=["GET"])
-def secret_message():
-    """
-    Endpoint for verifying a session token and returning a secret message
+# @app.route("/secret/", methods=["GET"])
+# def secret_message():
+#     """
+#     Endpoint for verifying a session token and returning a secret message
 
-    In your project, you will use the same logic for any endpoint that needs 
-    authentication
-    """
-    success, session_token = extract_token(request)
+#     In your project, you will use the same logic for any endpoint that needs 
+#     authentication
+#     """
+#     success, session_token = extract_token(request)
 
-    if not success:
-        return failure_response("Could not extract session token", 400)
+#     if not success:
+#         return failure_response("Could not extract session token", 400)
 
-    user = users_dao.get_user_by_session_token(session_token)
-    if user is None or not user.verify_session_token(session_token):
-        return failure_response("Invalid session token", 400)
+#     user = users_dao.get_user_by_session_token(session_token)
+#     if user is None or not user.verify_session_token(session_token):
+#         return failure_response("Invalid session token", 400)
 
-    # handle logic of the endpoint
-    # e.g. editing their profile
+#     # handle logic of the endpoint
+#     # e.g. editing their profile
 
-    return success_response({"message": "You have successfully implemented sessions!"})
+#     return success_response({"message": "You have successfully implemented sessions!"})
 
 
 @app.route("/logout/", methods=["POST"])
@@ -169,14 +169,68 @@ def logout():
 # --------------------------------------------
 
 @app.route("/api/entries/")
-def get_entry():
-    entries = [entry.serialize() for entry in Entry.query.all()]
-    return success_response({"entries": entries})
+def get_entries():
+    success, session_token = extract_token(request)
+
+    if not success:
+        return failure_response("Could not extract session token", 400)
+
+    user = users_dao.get_user_by_session_token(session_token)
+    if user is None or not user.verify_session_token(session_token):
+        return failure_response("Invalid session token", 400)
+
+    return success_response(user.get_user_entries())
+
+@app.route("/api/entries/<int:id>/", methods=["UPDATE"])
+def update_entry(id):
+    '''
+    Updates entry of id in current user
+    '''
+    
+    entry = Entry.query.filter_by(id=id).first()
+
+    if entry is None:
+        return failure_response("entry not found!")
+
+    user = users_dao.get_user_by_session_token(session_token)
+    if user is None or not user.verify_session_token(session_token):
+        return failure_response("Invalid session token", 400)
+
+    if None in [title, content]:
+        return failure_response("You either forgot to supply a title or content!", 400)
+    
+    if not emotion:
+        return failure_response("You forgot to supply an emotion!", 400)
+
+    if entry.user_id != user.id:
+        return failure_response("Entry is not held in current user", 400)
+
+    body = json.loads(request.data)
+
+    title = body.get("title", None)
+    content = body.get("content", None)
+    emotion = body.get("emotion", None)
+
+    success, session_token = extract_token(request)
+
+    if not success:
+        return failure_response("Could not extract session token", 400)
+
+    entry.title = title
+    entry.content = content
+    entry.emotion = emotion
+
+    db.session.commit()
+
+    return success_response(entry.serialize(), 201)
+
 
 @app.route("/api/entries/", methods=["POST"])
 def create_entry():
     '''
     Creates a new entry given a title, content, and emotion
+    Adds entry to current user
+    
     '''
     body = json.loads(request.data)
 
@@ -212,15 +266,30 @@ def create_entry():
     return success_response(new_entry.serialize(), 201)
 
 
-@app.route("/api/entries/<int:id>/")
+@app.route("/api/<>/entries/<int:id>/")
 def get_entry(id):
     '''
-    Retrieves entry given id
+    Retrieves entry given id from current user
     '''
+
+    success, session_token = extract_token(request)
+
+    if not success:
+        return failure_response("Could not extract session token", 400)
+
+    user = users_dao.get_user_by_session_token(session_token)
+    if user is None or not user.verify_session_token(session_token):
+        return failure_response("Invalid session token", 400)
+
     entry = Entry.query.filter_by(id=id).first()
+
     if entry is None:
         return failure_response("entry not found!")
-    return success_response(entry.serialize())
+
+    if entry.user_id == user.id:
+        return success_response(entry.serialize())
+    else:
+        return failure_response("Entry is not held in current user", 400)
 
 
 @app.route("/api/entries/<int:id>/", methods=["DELETE"])
@@ -228,12 +297,27 @@ def delete_entry(id):
     '''
     Delete entry given id
     '''
+
+    success, session_token = extract_token(request)
+
+    if not success:
+        return failure_response("Could not extract session token", 400)
+
+    user = users_dao.get_user_by_session_token(session_token)
+    if user is None or not user.verify_session_token(session_token):
+        return failure_response("Invalid session token", 400)
+
     entry = Entry.query.filter_by(id=id).first()
     if entry is None:
-        return failure_response("entry not found!")
+        return failure_response("Entry not found")
     db.session.delete(entry)
     db.session.commit()
-    return success_response(entry.serialize())
+    
+    if entry.user_id == user.id:
+        return success_response(entry.serialize())
+    else:
+        return failure_response("Entry is not held in current user", 400)
+
 
 # --------------------------------------------
 #  Tag routes
@@ -258,15 +342,15 @@ def create_tag():
     if None in [name, color]:
         return failure_response("You either forgot to supply a name or a color!", 400)
 
-    new_course = Course(
+    new_tag = Tag(
         color=color,
         name=name
     )
 
-    db.session.add(new_course)
+    db.session.add(new_tag)
     db.session.commit()
 
-    return success_response(new_course.serialize(), 201)
+    return success_response(new_tag.serialize(), 201)
 
 
 @app.route("/api/tags/<int:id>/")
@@ -304,15 +388,17 @@ def add_tag_to_entry(id):
 
     tid = body.get("tag_id", None)
 
-    if not uid:
+    if not tid:
         return failure_response("You forgot to supply a tag_id", 400)
 
     tag = Tag.query.filter_by(id=tid).first()
     if tag is None:
         return failure_response("Tag not found!")
 
+    entry.entry_tags.append(tag)
+
     db.session.commit()
-    return success_response(course.serialize())
+    return success_response(entry.serialize())
 
 
 
