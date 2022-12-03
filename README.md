@@ -1,9 +1,4 @@
 # Hack Challenge 22
 Authors: Noah, Jake
 
-### Endpoints: 
-  - blah
-  - blah
-  - blah
-
-Server Address: TODO
+Server Address: 34.150.206.225
