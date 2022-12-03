@@ -123,7 +123,7 @@ class Entry(db.Model):
 
     def info(self):
         return {
-            "id": self.issue,
+            "id": self.id,
             "title": self.title,
             "content": self.content,
             "emotion": self.emotion,

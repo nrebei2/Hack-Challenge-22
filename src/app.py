@@ -181,7 +181,7 @@ def get_entries():
 
     return success_response(user.get_user_entries())
 
-@app.route("/api/entries/<int:id>/", methods=["UPDATE"])
+@app.route("/api/entries/<int:id>/", methods=["POST"])
 def update_entry(id):
     '''
     Updates entry of id in current user
@@ -192,15 +192,11 @@ def update_entry(id):
     if entry is None:
         return failure_response("entry not found!")
 
+    success, session_token = extract_token(request)
+
     user = users_dao.get_user_by_session_token(session_token)
     if user is None or not user.verify_session_token(session_token):
         return failure_response("Invalid session token", 400)
-
-    if None in [title, content]:
-        return failure_response("You either forgot to supply a title or content!", 400)
-    
-    if not emotion:
-        return failure_response("You forgot to supply an emotion!", 400)
 
     if entry.user_id != user.id:
         return failure_response("Entry is not held in current user", 400)
@@ -216,9 +212,12 @@ def update_entry(id):
     if not success:
         return failure_response("Could not extract session token", 400)
 
-    entry.title = title
-    entry.content = content
-    entry.emotion = emotion
+    if title:
+        entry.title = title
+    if content:
+        entry.content = content
+    if emotion:
+        entry.emotion = emotion
 
     db.session.commit()
 
@@ -266,7 +265,7 @@ def create_entry():
     return success_response(new_entry.serialize(), 201)
 
 
-@app.route("/api/<>/entries/<int:id>/")
+@app.route("/api/entries/<int:id>/")
 def get_entry(id):
     '''
     Retrieves entry given id from current user
@@ -320,85 +319,85 @@ def delete_entry(id):
 
 
 # --------------------------------------------
-#  Tag routes
+#  Tag routes - Unused in frontend
 # --------------------------------------------
 
-@app.route("/api/tags/")
-def get_tags():
-    tags = [tag.serialize() for tag in Tag.query.all()]
-    return success_response({"tags": tags})
+# @app.route("/api/tags/")
+# def get_tags():
+#     tags = [tag.serialize() for tag in Tag.query.all()]
+#     return success_response({"tags": tags})
 
 
-@app.route("/api/tags/", methods=["POST"])
-def create_tag():
-    '''
-    Creates a new tag given a name and color
-    '''
-    body = json.loads(request.data)
+# @app.route("/api/tags/", methods=["POST"])
+# def create_tag():
+#     '''
+#     Creates a new tag given a name and color
+#     '''
+#     body = json.loads(request.data)
 
-    name = body.get("name", None)
-    color = body.get("color", None)
+#     name = body.get("name", None)
+#     color = body.get("color", None)
 
-    if None in [name, color]:
-        return failure_response("You either forgot to supply a name or a color!", 400)
+#     if None in [name, color]:
+#         return failure_response("You either forgot to supply a name or a color!", 400)
 
-    new_tag = Tag(
-        color=color,
-        name=name
-    )
+#     new_tag = Tag(
+#         color=color,
+#         name=name
+#     )
 
-    db.session.add(new_tag)
-    db.session.commit()
+#     db.session.add(new_tag)
+#     db.session.commit()
 
-    return success_response(new_tag.serialize(), 201)
-
-
-@app.route("/api/tags/<int:id>/")
-def get_tag(id):
-    '''
-    Retrieves tag given id
-    '''
-    tag = Tag.query.filter_by(id=id).first()
-    if tag is None:
-        return failure_response("tag not found!")
-    return success_response(tag.serialize())
+#     return success_response(new_tag.serialize(), 201)
 
 
-@app.route("/api/tags/<int:id>/", methods=["DELETE"])
-def delete_tag(id):
-    '''
-    Delete tag given id
-    '''
-    tag = Tag.query.filter_by(id=id).first()
-    if tag is None:
-        return failure_response("tag not found!")
-    db.session.delete(tag)
-    db.session.commit()
-    return success_response(tag.serialize())
+# @app.route("/api/tags/<int:id>/")
+# def get_tag(id):
+#     '''
+#     Retrieves tag given id
+#     '''
+#     tag = Tag.query.filter_by(id=id).first()
+#     if tag is None:
+#         return failure_response("tag not found!")
+#     return success_response(tag.serialize())
 
-@app.route("/api/entries/<int:id>/add/", methods=["POST"])
-def add_tag_to_entry(id):
-    '''
-    Adds tag of `tag_id` to course `id` as a teacher or student
-    '''
-    entry = Entry.query.filter_by(id=id).first()
-    if entry is None:
-        return failure_response("Entry not found!")
-    body = json.loads(request.data)
 
-    tid = body.get("tag_id", None)
+# @app.route("/api/tags/<int:id>/", methods=["DELETE"])
+# def delete_tag(id):
+#     '''
+#     Delete tag given id
+#     '''
+#     tag = Tag.query.filter_by(id=id).first()
+#     if tag is None:
+#         return failure_response("tag not found!")
+#     db.session.delete(tag)
+#     db.session.commit()
+#     return success_response(tag.serialize())
 
-    if not tid:
-        return failure_response("You forgot to supply a tag_id", 400)
+# @app.route("/api/entries/<int:id>/add/", methods=["POST"])
+# def add_tag_to_entry(id):
+#     '''
+#     Adds tag of `tag_id` to course `id` as a teacher or student
+#     '''
+#     entry = Entry.query.filter_by(id=id).first()
+#     if entry is None:
+#         return failure_response("Entry not found!")
+#     body = json.loads(request.data)
 
-    tag = Tag.query.filter_by(id=tid).first()
-    if tag is None:
-        return failure_response("Tag not found!")
+#     tid = body.get("tag_id", None)
 
-    entry.entry_tags.append(tag)
+#     if not tid:
+#         return failure_response("You forgot to supply a tag_id", 400)
 
-    db.session.commit()
-    return success_response(entry.serialize())
+#     tag = Tag.query.filter_by(id=tid).first()
+#     if tag is None:
+#         return failure_response("Tag not found!")
+
+#     entry.entry_tags.append(tag)
+
+#     db.session.commit()
+#     return success_response(entry.serialize())
 
 
 
