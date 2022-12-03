@@ -235,6 +235,85 @@ def delete_entry(id):
     db.session.commit()
     return success_response(entry.serialize())
 
+# --------------------------------------------
+#  Tag routes
+# --------------------------------------------
+
+@app.route("/api/tags/")
+def get_tags():
+    tags = [tag.serialize() for tag in Tag.query.all()]
+    return success_response({"tags": tags})
+
+
+@app.route("/api/tags/", methods=["POST"])
+def create_tag():
+    '''
+    Creates a new tag given a name and color
+    '''
+    body = json.loads(request.data)
+
+    name = body.get("name", None)
+    color = body.get("color", None)
+
+    if None in [name, color]:
+        return failure_response("You either forgot to supply a name or a color!", 400)
+
+    new_course = Course(
+        color=color,
+        name=name
+    )
+
+    db.session.add(new_course)
+    db.session.commit()
+
+    return success_response(new_course.serialize(), 201)
+
+
+@app.route("/api/tags/<int:id>/")
+def get_tag(id):
+    '''
+    Retrieves tag given id
+    '''
+    tag = Tag.query.filter_by(id=id).first()
+    if tag is None:
+        return failure_response("tag not found!")
+    return success_response(tag.serialize())
+
+
+@app.route("/api/tags/<int:id>/", methods=["DELETE"])
+def delete_tag(id):
+    '''
+    Delete tag given id
+    '''
+    tag = Tag.query.filter_by(id=id).first()
+    if tag is None:
+        return failure_response("tag not found!")
+    db.session.delete(tag)
+    db.session.commit()
+    return success_response(tag.serialize())
+
+@app.route("/api/entries/<int:id>/add/", methods=["POST"])
+def add_tag_to_entry(id):
+    '''
+    Adds tag of `tag_id` to course `id` as a teacher or student
+    '''
+    entry = Entry.query.filter_by(id=id).first()
+    if entry is None:
+        return failure_response("Entry not found!")
+    body = json.loads(request.data)
+
+    tid = body.get("tag_id", None)
+
+    if not uid:
+        return failure_response("You forgot to supply a tag_id", 400)
+
+    tag = Tag.query.filter_by(id=tid).first()
+    if tag is None:
+        return failure_response("Tag not found!")
+
+    db.session.commit()
+    return success_response(course.serialize())
+
 
 
 if __name__ == "__main__":
